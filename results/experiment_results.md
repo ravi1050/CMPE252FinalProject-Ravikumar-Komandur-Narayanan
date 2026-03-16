@@ -1,69 +1,70 @@
-# Experiment Results
+# Experiment Results Summary
 
-## Experiment 6.1: Baseline Evaluation (No Fine-Tuning)
+## Executive Summary
 
-**Date:** February 2026
-**Model:** Phi-3-Mini-4k-instruct (3.8B parameters, 4-bit quantized)
-**Dataset:** PubMedQA (pqa_labeled) - 200 test samples (indices 800-1000)
-**GPU:** NVIDIA A100-SXM4-40GB
-**Training:** None (base model as downloaded from Hugging Face)
+This document consolidates the completed experimental findings for the CMPE 252 final project. At present, the strongest completed result is the Phi-3 medical QA comparison between the untuned baseline model and an in-domain LoRA fine-tuned variant on PubMedQA.
 
-### Results
+The current evidence supports the main project hypothesis: parameter-efficient fine-tuning can materially improve task performance on a specialized domain without updating the full model.
 
-| Metric | Score |
-|--------|-------|
-| ROUGE-1 | 0.2265 |
-| ROUGE-2 | 0.0822 |
-| ROUGE-L | 0.1557 |
-| Accuracy (yes/no/maybe) | 59.50% (119/200) |
+## Completed Comparison
 
-### Observations
-- Model correctly answered the majority of questions (above 33% random baseline)
-- ROUGE scores are low, indicating the model's explanations differ significantly in wording from reference answers
-- Model has general medical knowledge but lacks domain-specific depth
-- This establishes the baseline for comparison with fine-tuned models
+### Phi-3 Medical QA: Baseline vs LoRA
 
----
+| Model | Dataset | Setting | ROUGE-1 | ROUGE-2 | ROUGE-L | Accuracy |
+|---|---|---|---:|---:|---:|---:|
+| Phi-3-Mini-4k-instruct | PubMedQA | Baseline | 0.2265 | 0.0822 | 0.1557 | 59.50% |
+| Phi-3-Mini-4k-instruct | PubMedQA | LoRA fine-tuned | 0.3594 | 0.1578 | 0.2848 | 75.50% |
 
-## Experiment 6.2: In-Domain LoRA Fine-Tuning (Medical)
+### Improvement Summary
 
-**Date:** February 2026
-**Model:** Phi-3-Mini-4k-instruct (3.8B parameters, 4-bit quantized)
-**Dataset:** PubMedQA (pqa_labeled)
-- Training: 800 samples (indices 0-800)
-- Evaluation: 200 samples (indices 800-1000)
-**GPU:** NVIDIA H100 80GB HBM3
+| Metric | Absolute Change | Relative Improvement |
+|---|---:|---:|
+| ROUGE-1 | +0.1329 | +59% |
+| ROUGE-2 | +0.0756 | +92% |
+| ROUGE-L | +0.1291 | +83% |
+| Accuracy | +16.00 points | +27% |
 
-### LoRA Configuration
+## Experimental Context
 
-| Parameter | Value |
-|-----------|-------|
-| Rank (r) | 16 |
-| Alpha | 32 |
-| Dropout | 0.05 |
-| Target modules | q_proj, k_proj, v_proj, o_proj |
-| Trainable parameters | 12,582,912 (0.33% of total) |
+### Baseline Evaluation
+
+| Item | Value |
+|---|---|
+| Date | February 2026 |
+| Model | Phi-3-Mini-4k-instruct |
+| Quantization | 4-bit |
+| Dataset | PubMedQA (200 test samples, indices 800-1000) |
+| GPU | NVIDIA A100-SXM4-40GB |
+| Training | None |
+
+### LoRA Fine-Tuning Setup
+
+| Item | Value |
+|---|---|
+| Date | February 2026 |
+| Model | Phi-3-Mini-4k-instruct |
+| Dataset | PubMedQA |
+| Training split | 800 samples |
+| Evaluation split | 200 samples |
+| GPU | NVIDIA H100 80GB HBM3 |
+| LoRA rank | 16 |
+| LoRA alpha | 32 |
+| LoRA dropout | 0.05 |
+| Target modules | `q_proj`, `k_proj`, `v_proj`, `o_proj` |
+| Trainable parameters | 12,582,912 |
 | Total parameters | 3,833,662,464 |
-
-### Training Configuration
-
-| Parameter | Value |
-|-----------|-------|
 | Epochs | 3 |
-| Batch size | 4 |
-| Gradient accumulation steps | 4 |
 | Effective batch size | 16 |
-| Learning rate | 2e-4 |
-| Optimizer | adamw_8bit |
-| Precision | bfloat16 |
-| Total steps | 150 |
+| Learning rate | `2e-4` |
+| Optimizer | `adamw_8bit` |
+| Precision | `bfloat16` |
 | Training time | 112 seconds |
 | Final training loss | 1.3751 |
 
-### Training Loss Progression
+## Training Loss Progression
 
 | Step | Loss |
-|------|------|
+|---:|---:|
 | 10 | 1.5931 |
 | 20 | 1.4216 |
 | 30 | 1.4134 |
@@ -80,68 +81,51 @@
 | 140 | 1.3542 |
 | 150 | 1.3006 |
 
-Loss decreased from 1.59 to 1.30 over training, indicating the model learned from the data.
+## Interpretation
 
-### Results: Baseline vs Fine-Tuned
+### Main Finding
 
-| Metric | Baseline | Fine-tuned | Change | % Improvement |
-|--------|----------|------------|--------|---------------|
-| ROUGE-1 | 0.2265 | 0.3594 | +0.1329 | +59% |
-| ROUGE-2 | 0.0822 | 0.1578 | +0.0756 | +92% |
-| ROUGE-L | 0.1557 | 0.2848 | +0.1291 | +83% |
-| Accuracy | 59.50% | 75.50% | +16.00% | +27% |
+The completed Phi-3 medical experiment supports the claim that LoRA fine-tuning improves domain-specific QA performance substantially while updating only a small fraction of the model parameters.
 
-### Hypothesis Testing
+### Why This Matters
 
-**Hypothesis 1:** "LoRA fine-tuning on domain-specific data significantly improves task performance compared to base models."
+- only 0.33% of the model parameters were trained
+- training completed in under two minutes on H100
+- all reported evaluation metrics improved
+- the largest relative gains appeared in ROUGE-2 and ROUGE-L, indicating better overlap with reference answers
+- classification accuracy improved from 59.50% to 75.50%
 
-**Result: SUPPORTED**
-
-All metrics showed significant improvement after LoRA fine-tuning:
-- ROUGE-1 improved by 59%
-- ROUGE-2 nearly doubled (+92%)
-- ROUGE-L improved by 83%
-- Accuracy improved by 16 percentage points (59.5% → 75.5%)
-
-This was achieved by training only 0.33% of the model's parameters for 112 seconds on 800 samples.
-
-### Key Findings
-1. LoRA fine-tuning with only 12.5M trainable parameters (out of 3.8B) produced significant improvements
-2. Training time was minimal (112 seconds on H100)
-3. GPU memory usage remained low (2.4 GB) due to 4-bit quantization
-4. The model's medical QA accuracy jumped from near-random (59.5%) to meaningful (75.5%)
-5. ROUGE scores indicate the fine-tuned model generates explanations more aligned with expert reference answers
-
-### Adapter Storage
-- Saved to: Google Drive (`/content/drive/MyDrive/phi3-medical-lora`)
-- Adapter size: ~10-50 MB (vs 2.3 GB for full model)
-
----
-
-## Remaining Experiments
-
-| # | Experiment | Status |
-|---|-----------|--------|
-| 6.1 | Baseline evaluation | ✅ Complete (Phi-3 medical) |
-| 6.2 | In-domain LoRA (medical) | ✅ Complete (Phi-3) - Need LLaMA, Qwen, Mistral |
-| 6.2 | In-domain LoRA (legal) | Pending |
-| 6.3 | Cross-domain transfer | Pending |
-| 6.4 | LoRA rank ablation | Pending |
-| 6.5 | Training data size ablation | Pending |
-| 6.6 | LoRA vs Full fine-tuning | Pending |
-| 6.7 | Hallucination analysis | Pending |
-| 6.8 | AdaLoRA | Pending |
-| 6.9 | IA3 | Pending |
-| 6.10 | QLoRA vs standard LoRA | Pending |
-
----
-
-## GPU Comparison
+## Compute Efficiency Snapshot
 
 | Task | A100 (40GB) | H100 (80GB) |
-|------|-------------|-------------|
-| Baseline eval (200 samples) | ~15 min | ~3.5 min |
-| LoRA training (800 samples, 3 epochs) | ~15-20 min (est.) | 112 seconds |
-| Fine-tuned eval (200 samples) | ~15 min (est.) | ~3.5 min |
+|---|---|---|
+| Baseline evaluation (200 samples) | ~15 min | ~3.5 min |
+| LoRA training (800 samples, 3 epochs) | ~15-20 min estimated | 112 seconds |
+| Fine-tuned evaluation (200 samples) | ~15 min estimated | ~3.5 min |
 
-H100 is approximately 4-5x faster than A100 for our workload.
+## Results Coverage Map
+
+Only completed results are listed as measured values below. Planned items are intentionally left without fabricated metrics.
+
+| Experiment | Status | Measured Results Available |
+|---|---|---|
+| 6.1 Baseline evaluation | Complete for Phi-3 medical | Yes |
+| 6.2 In-domain LoRA, medical | Complete for Phi-3 medical | Yes |
+| 6.2 In-domain LoRA, legal | In progress | No |
+| 6.3 Cross-domain transfer | Planned | No |
+| 6.4 LoRA rank ablation | Planned | No |
+| 6.5 Training-size ablation | Planned | No |
+| 6.6 LoRA vs full fine-tuning | Planned | No |
+| 6.8 AdaLoRA | Script prepared | No |
+| 6.9 IA3 | Script prepared | No |
+| 6.10 QLoRA | Script prepared | No |
+
+## Next Results To Add
+
+The highest-value additions to this document are:
+
+1. legal-domain LoRA results
+2. QLoRA versus standard LoRA comparison
+3. AdaLoRA and IA3 comparison on the same model and dataset
+
+Once those runs are complete, this file can be expanded into a consolidated final comparison table across methods, domains, and models.
