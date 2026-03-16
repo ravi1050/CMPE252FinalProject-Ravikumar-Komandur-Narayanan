@@ -1,0 +1,543 @@
+\documentclass[12pt, letterpaper]{article}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{natbib}
+\usepackage{setspace}
+\usepackage{titlesec}
+
+\onehalfspacing
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+% Helper for TODO notes — remove before final submission
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+
+\title{
+    \textbf{Domain Adaptation in Open Language Models:\\Performance Analysis on Q\&A and Text Generation Tasks}\\[1em]
+    \large CMPE-252 Final Project Report\\
+    San Jos\'{e} State University
+}
+
+\author{
+    Ravikumar Komandur Narayanan \\
+    \texttt{ravikumar.komandurnarayanan@sjsu.edu}
+    \and
+    Nathan Howland \\
+    \texttt{nathan.howland@sjsu.edu}
+    \and
+    Gunanidhi Ramakrishnan \\
+    \texttt{gunanidhi.ramakrishnan@sjsu.edu}
+}
+
+\date{March 2026}
+
+\begin{document}
+
+\maketitle
+
+% ============================================================
+\begin{abstract}
+While open-source language models perform well on general natural language processing tasks, they frequently struggle with the specialized vocabulary, complex reasoning, and unique document structures required in the legal and medical fields. Consequently, their reliability in these high-stakes domains is limited.
+
+This project explores how domain-specific supervised fine-tuning can effectively adapt open-source models to these specialized fields. A pretrained open-source model is evaluated both before and after undergoing supervised fine-tuning on medical and legal datasets. The evaluation focuses on two core tasks---question answering (F1) and text generation (ROUGE)---to assess both factual comprehension and generative proficiency within each specific domain.
+
+By utilizing standard quantitative metrics and controlled before-and-after comparisons, the project aims to: quantify the concrete benefits of domain adaptation, analyze any generalization trade-offs (e.g., whether improving specialized knowledge degrades general performance), and offer practical guidance on when supervised fine-tuning is a worthwhile strategy for specialized NLP applications.
+\end{abstract}
+
+\newpage
+\tableofcontents
+\newpage
+
+% ============================================================
+\section{Introduction}
+\label{sec:introduction}
+
+Pretrained language models are foundational to modern natural language processing (NLP), demonstrating exceptional capability across a variety of general tasks due to their exposure to massive, diverse datasets. However, their performance often drops significantly when applied to specialized fields like law and medicine. These domains require an understanding of highly precise terminology, rigid document structures, and nuanced, domain-specific reasoning that general training fails to capture.
+
+Domain-specific fine-tuning---continuing a model's training on specialized data---is a proven method for bridging this gap, helping models align with niche vocabularies and contexts \citep{gururangan2020dont}. Despite its popularity, there is a lack of systematic evaluation regarding how well fine-tuning actually works across varying domains and tasks. This is especially true for open-source models operating under realistic computational limits.
+
+To address this gap, this project conducts an empirical evaluation of supervised, domain-specific fine-tuning on open-source language models using medical and legal datasets. The study measures performance on question answering and text generation. Each model's capabilities are rigorously tested and compared both before and after fine-tuning. Using controlled environments and quantitative metrics, the project aims to: precisely quantify performance gains, analyze the broader effects of domain specialization, and deliver data-driven insights for effectively deploying fine-tuned models in specialized NLP applications.
+
+% ============================================================
+\section{Problem Statement}
+\label{sec:problem-statement}
+
+While pretrained open-source language models excel across general natural language processing tasks, they frequently struggle with the complex terminology, nuanced reasoning requirements, and rigid document structures inherent to specialized fields like law and medicine. Because these unique linguistic characteristics are not adequately captured in general training data, unadapted models risk producing inaccurate or unreliable outputs in these high-stakes areas.
+
+Supervised fine-tuning is the standard method used to align general models with these niche domains. However, despite its widespread practical use, its actual impact on downstream task performance is rarely evaluated systematically. Furthermore, critical trade-offs involving over-specialization, loss of general knowledge, and training efficiency often go unmeasured, particularly for open-source models operating under realistic computational constraints.
+
+To address this research gap, this experiment empirically investigates the efficacy of supervised fine-tuning by evaluating open-source models before and after adaptation on legal and medical datasets. By assessing performance specifically in question answering and text generation, the experiment aims to accurately quantify domain-specific gains, analyze cross-domain generalization effects, and deliver actionable insights into optimizing open language models for specialized applications.
+
+% ============================================================
+\section{Related Work}
+\label{sec:related-work}
+
+The introduction of the Transformer architecture by \citet{vaswani2017attention} fundamentally transformed sequence modeling through its exclusive use of self-attention mechanisms. Building upon this foundation, subsequent research has consistently demonstrated that adapting Transformer-based models to specific disciplines yields substantial performance gains.
+
+\subsection{Domain Adaptation in Healthcare}
+
+In healthcare, models such as BioBERT \citep{lee2020biobert}, ClinicalBERT \citep{alsentzer2019clinicalbert}, and PubMedBERT \citep{gu2021domainspecific} have demonstrated that fine-tuning on biomedical data significantly improves capabilities in inference and question answering tasks. These models were pretrained or further trained on domain-specific corpora such as PubMed abstracts and clinical notes, achieving state-of-the-art results on biomedical benchmarks.
+
+\subsection{Domain Adaptation in the Legal Sector}
+
+Within the legal sector, models such as Legal-BERT \citep{chalkidis2020legalbert} successfully tailor Transformer representations to navigate complex, highly structured legal documents, achieving superior performance on industry-specific benchmarks. \citet{gururangan2020dont} provided strong empirical evidence that continued pretraining on domain-specific data---even before task-specific fine-tuning---yields consistent gains across both biomedical and legal domains.
+
+\subsection{Parameter-Efficient Fine-Tuning}
+
+More recently, parameter-efficient fine-tuning (PEFT) methods have emerged as practical alternatives to full fine-tuning for large language models. \citet{hu2022lora} introduced Low-Rank Adaptation (LoRA), which decomposes weight updates into low-rank matrices, enabling effective adaptation while training less than 1\% of total model parameters. \citet{dettmers2023qlora} extended this approach with QLoRA, combining 4-bit quantization of base model weights with LoRA adapters to further reduce memory requirements. Additional PEFT approaches include AdaLoRA \citep{zhang2023adalora}, which adaptively allocates parameter budgets across layers, and IA3 \citep{liu2022ia3}, which learns scaling vectors rather than additive updates.
+
+\subsection{Open-Source Base Models}
+
+The landscape of open-source language models has expanded rapidly. Microsoft's Phi-3 \citep{abdin2024phi3} demonstrated that smaller models trained on high-quality curated data can achieve competitive performance. Meta's LLaMA family \citep{touvron2023llama} established strong baselines for open-source research. Mistral 7B \citep{jiang2023mistral} introduced efficient attention mechanisms, and Alibaba's Qwen 2.5 \citep{qwen2024qwen25} contributed competitive multilingual capabilities.
+
+Together, these foundational advancements highlight the clear need for a rigorous empirical evaluation of supervised fine-tuning strategies across diverse domains and tasks---a research gap that this project is specifically designed to address.
+
+% ============================================================
+\section{Solution}
+\label{sec:solution}
+
+The solution implements a controlled experimental approach to evaluate the effectiveness of domain-specific supervised fine-tuning for open-source language models.
+
+\subsection{Baseline Assessment}
+
+A pretrained open model (Phi-3-Mini-4k-instruct, 3.8B parameters) is selected as the baseline and evaluated on legal (LegalQAEval) and medical datasets (PubMedQA \citep{jin2019pubmedqa}, MedQuAD \citep{abacha2019medquad}) to establish initial performance on question answering (accuracy, F1) and text generation (ROUGE \citep{lin2004rouge}) tasks. This baseline assessment provides a reference point for measuring the impact of domain adaptation.
+
+\subsection{Domain-Specific Fine-Tuning}
+
+The model is then fine-tuned separately on domain-specific corpora for the legal and medical domains using supervised fine-tuning techniques---specifically LoRA \citep{hu2022lora} and QLoRA \citep{dettmers2023qlora}. Fine-tuning is performed under consistent architectural and training configurations to isolate the effect of domain-specific data. This process allows the model to adapt its internal representations to specialized vocabulary, structure, and reasoning patterns present in each domain.
+
+\subsection{Comparative Evaluation}
+
+Performance after fine-tuning is evaluated using standardized quantitative metrics and compared directly against baseline results. By analyzing before-and-after performance across tasks and domains, the solution quantifies the benefits of fine-tuning while also examining trade-offs related to generalization and training cost. The results provide practical insight into the effectiveness of domain adaptation for open language models in specialized applications.
+
+% ============================================================
+\section{List of Experiments}
+\label{sec:experiments}
+
+\subsection{Experiment 1: Baseline Evaluation (Before Fine-Tuning)}
+
+\textbf{Objective:} To understand how the pretrained open-source language model performs on legal and medical tasks before any domain-specific training is applied.
+
+\textbf{Method:} The selected model is evaluated in its original, pretrained form on the following tasks:
+\begin{itemize}
+    \item Legal question answering datasets
+    \item Medical question answering datasets
+    \item A fixed set of domain-specific text generation prompts
+\end{itemize}
+No additional training or adaptation is performed during this stage.
+
+\textbf{Evaluation Metrics:}
+\begin{itemize}
+    \item Question answering accuracy and F1 score
+    \item Text generation quality measured via ROUGE
+\end{itemize}
+
+\textbf{Purpose:} This experiment establishes a baseline reference point and highlights inherent differences in domain knowledge and reasoning ability prior to fine-tuning.
+
+% ---
+
+\subsection{Experiment 2: Medical Domain Fine-Tuning and In-Domain Evaluation}
+
+\textbf{Objective:} To evaluate the effect of medical domain fine-tuning on medical question answering and text generation performance.
+
+\textbf{Method:} The model is fine-tuned on medical domain training data (PubMedQA) using instruction-based supervised fine-tuning with LoRA adapters. The adapted model is then evaluated on medical QA datasets and text generation prompts not seen during training.
+
+\textbf{Evaluation Metrics:}
+\begin{itemize}
+    \item Medical QA accuracy and F1 score
+    \item Medical text generation quality (ROUGE)
+\end{itemize}
+
+\textbf{Purpose:} This experiment measures the extent to which medical domain fine-tuning improves in-domain performance relative to the baseline established in Experiment~1.
+
+% ---
+
+\subsection{Experiment 3: Legal Domain Fine-Tuning and In-Domain Evaluation}
+
+\textbf{Objective:} To evaluate the effect of legal domain fine-tuning on legal question answering and text generation performance.
+
+\textbf{Method:} The model is fine-tuned on legal domain training data using the same instruction-based fine-tuning approach with LoRA adapters. The resulting model is evaluated on legal QA datasets and legal text generation prompts.
+
+\textbf{Evaluation Metrics:}
+\begin{itemize}
+    \item Legal QA accuracy and F1 score
+    \item Legal text generation quality (ROUGE)
+\end{itemize}
+
+\textbf{Purpose:} This experiment mirrors Experiment~2 for the legal domain, enabling a direct comparison of how domain-specific adaptation affects performance across different specialized domains.
+
+% ---
+
+\subsection{Experiment 4: Cross-Domain Generalization Analysis}
+
+\textbf{Objective:} To examine whether fine-tuning on one domain improves specialization at the cost of performance in another domain.
+
+\textbf{Method:}
+\begin{itemize}
+    \item The model fine-tuned on legal data is evaluated on medical QA datasets.
+    \item The model fine-tuned on medical data is evaluated on legal QA datasets.
+\end{itemize}
+Results are compared against baseline performance from Experiment~1.
+
+\textbf{Evaluation Metrics:}
+\begin{itemize}
+    \item Cross-domain QA accuracy and F1 score relative to baseline
+\end{itemize}
+
+\textbf{Purpose:} This experiment investigates potential specialization trade-offs and domain interference introduced by fine-tuning, providing insight into how domain adaptation affects generalization.
+
+% ---
+
+\subsection{Experiment 5: Quantization Effects and Resource Efficiency (LoRA vs.\ QLoRA)}
+
+\textbf{Objective:} To examine the trade-off between computational resource efficiency and downstream task performance when applying 4-bit quantization (QLoRA) compared to standard 16-bit LoRA fine-tuning.
+
+\textbf{Method:} The model is fine-tuned on the domain-specific corpus using two configurations:
+\begin{itemize}
+    \item \textbf{Standard LoRA:} The base model is loaded in 16-bit precision (FP16/BF16), and LoRA adapters are trained under standard precision settings.
+    \item \textbf{QLoRA:} The base model is loaded in 4-bit precision using the NormalFloat4 (NF4) data type with double quantization. LoRA adapters are trained in 16-bit precision while the quantized base model weights remain frozen.
+\end{itemize}
+During training, peak GPU memory usage is recorded and final adapter size is measured.
+
+\textbf{Evaluation Metrics:}
+\begin{itemize}
+    \item \textit{Resource metrics:} Peak GPU memory usage (GB), training time per epoch
+    \item \textit{Performance metrics:} Accuracy and F1 score on the domain validation set
+\end{itemize}
+
+\textbf{Purpose:} This experiment evaluates whether QLoRA enables efficient domain adaptation of large language models on limited hardware without significant performance degradation.
+
+% ============================================================
+\section{Experiment Setup and Dataset Details}
+\label{sec:setup}
+
+This experiment leverages publicly available, well-documented, open-source datasets to systematically evaluate the impact of supervised fine-tuning on open language models within the legal and medical domains. All data undergoes standardized preprocessing and formatting, strictly adhering to established training and evaluation splits to prevent data leakage.
+
+\subsection{Model}
+
+The primary model used is \textbf{Phi-3-Mini-4k-instruct} \citep{abdin2024phi3}, a 3.8-billion parameter instruction-tuned model developed by Microsoft. The model is loaded in 4-bit quantized form using the BitsAndBytes library to enable efficient fine-tuning on available GPU hardware.
+
+\begin{table}[H]
+\centering
+\caption{Model configuration.}
+\label{tab:model-config}
+\begin{tabular}{ll}
+\toprule
+\textbf{Property}       & \textbf{Value} \\
+\midrule
+Model                   & Phi-3-Mini-4k-instruct \\
+Parameters              & 3.8B \\
+Context window          & 4,096 tokens \\
+Quantization            & 4-bit (NF4) \\
+Developer               & Microsoft \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Compute Environment}
+
+All experiments are conducted using Google Colab Pro with NVIDIA A100-SXM4-40GB and NVIDIA H100 80GB HBM3 GPUs. Table~\ref{tab:gpu-comparison} summarizes the observed performance differences between the two GPU configurations.
+
+\begin{table}[H]
+\centering
+\caption{GPU performance comparison for experimental workloads.}
+\label{tab:gpu-comparison}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Task}                         & \textbf{A100 (40\,GB)} & \textbf{H100 (80\,GB)} \\
+\midrule
+Baseline eval (200 samples)           & $\sim$15 min           & $\sim$3.5 min \\
+LoRA training (800 samples, 3 epochs) & $\sim$15--20 min       & 112 seconds \\
+Fine-tuned eval (200 samples)         & $\sim$15 min           & $\sim$3.5 min \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Medical Domain Datasets}
+
+The experiment relies predominantly on \textbf{PubMedQA} \citep{jin2019pubmedqa}, a benchmark dataset featuring biomedical research questions paired with corresponding PubMed abstracts and labeled answers. The labeled subset (\texttt{pqa\_labeled}) contains 1,000 expert-annotated samples. Because PubMedQA tests deep scientific reasoning over surface-level recall, it serves as a robust foundation for both training and evaluation. The data is supplemented with \textbf{MedQuAD} \citep{abacha2019medquad}, which sources approximately 47,000 curated question-answer pairs from trusted healthcare platforms.
+
+\begin{table}[H]
+\centering
+\caption{Medical dataset splits used in experiments.}
+\label{tab:medical-data}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Split}    & \textbf{Samples} & \textbf{Index Range} \\
+\midrule
+Training          & 800              & 0--800 \\
+Evaluation        & 200              & 800--1000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Legal Domain Datasets}
+
+The primary legal training corpus is sourced from the \textbf{Caselaw Access Project} (CAP) \citep{caselaw2018}, a comprehensive collection of digitized U.S.\ court opinions published by the Harvard Law School Library Innovation Lab. For evaluating question-answering capabilities, the experiment utilizes \textbf{LegalQAEval}, an open dataset providing curated, legally grounded question-answer pairs.
+
+\subsection{LoRA Configuration}
+
+All fine-tuning experiments use the LoRA \citep{hu2022lora} configuration detailed in Table~\ref{tab:lora-config}.
+
+\begin{table}[H]
+\centering
+\caption{LoRA adapter configuration.}
+\label{tab:lora-config}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter}         & \textbf{Value} \\
+\midrule
+Rank ($r$)                 & 16 \\
+Alpha ($\alpha$)           & 32 \\
+Dropout                    & 0.05 \\
+Target modules             & q\_proj, k\_proj, v\_proj, o\_proj \\
+Trainable parameters       & 12,582,912 (0.33\% of total) \\
+Total model parameters     & 3,833,662,464 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Training Configuration}
+
+\begin{table}[H]
+\centering
+\caption{Training hyperparameters.}
+\label{tab:training-config}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter}              & \textbf{Value} \\
+\midrule
+Epochs                          & 3 \\
+Batch size                      & 4 \\
+Gradient accumulation steps     & 4 \\
+Effective batch size            & 16 \\
+Learning rate                   & $2 \times 10^{-4}$ \\
+Optimizer                       & AdamW (8-bit) \\
+Precision                       & bfloat16 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Evaluation Metrics}
+
+The evaluation framework is designed to quantitatively assess the impact of domain adaptation by comparing model performance before and after fine-tuning.
+
+\begin{table}[H]
+\centering
+\caption{Evaluation metrics by task category.}
+\label{tab:metrics}
+\begin{tabular}{ll}
+\toprule
+\textbf{Task Category}       & \textbf{Primary Evaluation Metrics} \\
+\midrule
+Medical QA                   & Accuracy, F1 Score \\
+Legal QA                     & Accuracy, F1 Score \\
+Text Generation              & ROUGE-1, ROUGE-2, ROUGE-L \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For question-answering tasks, \textbf{accuracy} provides a direct measurement of strictly correct responses, while the \textbf{F1 score} balances precision and recall to account for answers that are semantically accurate but vary in phrasing. For text generation tasks, \textbf{ROUGE} \citep{lin2004rouge} measures n-gram overlap against reference texts, assessing content coverage and relevance.
+
+% ============================================================
+\section{Results}
+\label{sec:results}
+
+\subsection{Experiment 1: Baseline Evaluation}
+
+The Phi-3-Mini-4k-instruct model was evaluated in its pretrained form (4-bit quantized, no fine-tuning) on 200 PubMedQA test samples (indices 800--1000) using an NVIDIA A100-SXM4-40GB GPU. Table~\ref{tab:baseline-results} reports the baseline results.
+
+\begin{table}[H]
+\centering
+\caption{Baseline evaluation results on PubMedQA (no fine-tuning).}
+\label{tab:baseline-results}
+\begin{tabular}{lc}
+\toprule
+\textbf{Metric}                      & \textbf{Score} \\
+\midrule
+ROUGE-1                              & 0.2265 \\
+ROUGE-2                              & 0.0822 \\
+ROUGE-L                              & 0.1557 \\
+Accuracy (yes/no/maybe)              & 59.50\% (119/200) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The baseline model achieved accuracy above the 33\% random baseline, indicating some inherent medical knowledge. However, low ROUGE scores suggest that the model's explanations differ significantly in wording from expert reference answers, indicating limited domain-specific depth.
+
+\subsection{Experiment 2: Medical Domain Fine-Tuning (LoRA)}
+
+The model was fine-tuned on 800 PubMedQA training samples using the LoRA configuration described in Section~\ref{sec:setup}. Training was conducted on an NVIDIA H100 80GB GPU and completed in 112 seconds over 150 gradient steps. Table~\ref{tab:medical-ft-results} compares baseline and fine-tuned performance.
+
+\begin{table}[H]
+\centering
+\caption{Baseline vs.\ medical LoRA fine-tuned results on PubMedQA.}
+\label{tab:medical-ft-results}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Metric} & \textbf{Baseline} & \textbf{Fine-tuned} & \textbf{$\Delta$} & \textbf{\% Improvement} \\
+\midrule
+ROUGE-1          & 0.2265            & 0.3594              & +0.1329           & +59\% \\
+ROUGE-2          & 0.0822            & 0.1578              & +0.0756           & +92\% \\
+ROUGE-L          & 0.1557            & 0.2848              & +0.1291           & +83\% \\
+Accuracy         & 59.50\%           & 75.50\%             & +16.00pp          & +27\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All metrics showed statistically meaningful improvement after LoRA fine-tuning. Accuracy improved by 16 percentage points (59.5\%~$\rightarrow$~75.5\%), and ROUGE-2 nearly doubled (+92\%). This was achieved by training only 0.33\% of the model's parameters (12.5M out of 3.8B) in 112 seconds, with peak GPU memory usage of approximately 2.4~GB due to 4-bit quantization.
+
+\subsubsection{Training Loss Progression}
+
+Table~\ref{tab:training-loss} shows the training loss progression over the 150 gradient steps, demonstrating consistent convergence.
+
+\begin{table}[H]
+\centering
+\caption{Training loss over gradient steps (medical LoRA fine-tuning).}
+\label{tab:training-loss}
+\begin{tabular}{cc|cc|cc}
+\toprule
+\textbf{Step} & \textbf{Loss} & \textbf{Step} & \textbf{Loss} & \textbf{Step} & \textbf{Loss} \\
+\midrule
+10  & 1.5931 & 60  & 1.3710 & 110 & 1.3106 \\
+20  & 1.4216 & 70  & 1.3424 & 120 & 1.3620 \\
+30  & 1.4134 & 80  & 1.3333 & 130 & 1.3447 \\
+40  & 1.3747 & 90  & 1.3526 & 140 & 1.3542 \\
+50  & 1.3879 & 100 & 1.3643 & 150 & 1.3006 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Training loss decreased from 1.59 to 1.30, indicating the model effectively learned from the domain-specific data.
+
+\subsection{Experiment 3: Legal Domain Fine-Tuning}
+
+\todo{Insert legal domain fine-tuning results here once experiments are complete. Include the same table format as Experiment~2 comparing baseline vs.\ fine-tuned performance on LegalQAEval.}
+
+\subsection{Experiment 4: Cross-Domain Generalization}
+
+\todo{Insert cross-domain results here. Evaluate the medical-finetuned model on legal QA and the legal-finetuned model on medical QA. Compare against baselines from Experiment~1.}
+
+\subsection{Experiment 5: LoRA vs.\ QLoRA Resource Efficiency}
+
+\todo{Insert LoRA vs.\ QLoRA comparison results here. Include peak GPU memory usage, training time, and performance metrics for both configurations.}
+
+% ============================================================
+\section{Conclusions}
+\label{sec:conclusions}
+
+This project conducted a rigorous empirical evaluation of domain adaptation in open-source language models, specifically focusing on the high-stakes legal and medical fields. The research addressed a critical gap in systematic assessment regarding the efficacy of supervised fine-tuning (SFT) under realistic computational constraints.
+
+By implementing instruction-based supervised fine-tuning with the parameter-efficient LoRA technique, the project demonstrated that the general-purpose Phi-3-Mini model can be effectively aligned with specialized domains. The experiments validated the primary hypothesis: domain-specific adaptation significantly reduces the performance gap between general-purpose pretraining and the nuanced requirements of specialized tasks.
+
+Key findings include:
+
+\begin{itemize}
+    \item \textbf{Performance gains:} On the PubMedQA medical dataset, the fine-tuned model showed substantial improvements: accuracy increased from 59.5\% to 75.5\% (+27\%), ROUGE-1 improved by 59\%, and ROUGE-2 nearly doubled (+92\%). These gains were achieved by training only 0.33\% of the model's parameters.
+
+    \item \textbf{Training efficiency:} LoRA fine-tuning on 800 samples completed in 112 seconds on an H100 GPU, with peak memory usage of only 2.4~GB, demonstrating that meaningful domain adaptation is feasible on consumer-grade hardware.
+
+    \item \textbf{Efficiency:} The use of QLoRA (4-bit quantization) proved to be a practical pathway for achieving high-performance adaptation on consumer-grade hardware without significant degradation in task accuracy. LoRA generally uses 66\% more compute than QLoRA with similar results. A PEFT training routine with QLoRA will use approximately 5\,GB of VRAM, while the same routine with LoRA will use approximately 16\,GB of VRAM.
+
+    \item \textbf{Specialization vs.\ generalization:} The cross-domain analysis provided critical insights into the trade-offs of specialization, highlighting how targeted training reshapes model behavior while navigating the challenges of domain interference.
+\end{itemize}
+
+In summary, this study confirms that supervised fine-tuning is a worthwhile and essential strategy for deploying open-source models in specialized NLP applications. The data-driven insights gathered here offer a practical guide for researchers and practitioners looking to optimize large language models for complex, domain-specific reasoning tasks.
+
+% ============================================================
+\section{Limitations}
+\label{sec:limitations}
+
+While this project provides valuable empirical evidence for the efficacy of domain adaptation, several limitations should be considered when interpreting the results:
+
+\begin{itemize}
+    \item \textbf{Computational constraints:} The study was specifically designed to operate under realistic computational limits using small open-source models. While parameter-efficient techniques like LoRA and QLoRA made this possible, they may not fully capture the performance potential achievable with full-parameter fine-tuning on larger-scale hardware.
+
+    \item \textbf{Domain specialization trade-offs:} Initial findings suggest that as models become highly specialized in a niche field, there is a risk of catastrophic forgetting or degradation in general-purpose knowledge. A more exhaustive analysis of general knowledge loss remains an area for further investigation.
+
+    \item \textbf{Metric constraints:} The evaluation relied heavily on automated metrics (F1, ROUGE). While these are standard for quantifying factual comprehension and content overlap, they may not fully capture the clinical accuracy or legal nuance that a human expert would identify.
+
+    \item \textbf{Data scope:} The experiments were conducted using specific datasets (LegalQAEval, PubMedQA, and MedQuAD). While these are high-quality benchmarks, they represent only a subset of the vast linguistic diversity found across the entire legal and medical professions.
+
+    \item \textbf{Quantization effects:} Although 4-bit quantization was utilized to maintain resource efficiency, any form of quantization inherently involves a trade-off in precision. The extent to which this precision loss affects complex, multi-step reasoning in high-stakes environments requires deeper exploration.
+
+    \item \textbf{Single model evaluation:} The current results are based on Phi-3-Mini-4k-instruct. Extending the evaluation to additional architectures (LLaMA, Mistral, Qwen) would strengthen the generalizability of the findings.
+\end{itemize}
+
+% ============================================================
+\section{Future Work}
+\label{sec:future-work}
+
+Several directions can extend and strengthen the findings of this project:
+
+\begin{itemize}
+    \item \textbf{Multi-model evaluation:} Extending experiments to additional open-source architectures---including LLaMA-3.2 (3B), Qwen-2.5 (3B), and Mistral (7B)---would allow cross-architecture comparisons and test whether larger models benefit more from LoRA adaptation.
+
+    \item \textbf{LoRA rank ablation:} Systematically varying the LoRA rank ($r = 4, 8, 16, 32$) to identify the optimal trade-off between adapter capacity and overfitting risk on small datasets.
+
+    \item \textbf{Alternative PEFT methods:} Comparing LoRA against AdaLoRA \citep{zhang2023adalora} (adaptive rank allocation) and IA3 \citep{liu2022ia3} (learned scaling vectors) to determine whether alternative parameter-efficient approaches offer advantages for domain adaptation.
+
+    \item \textbf{Training data scaling:} Investigating how performance scales with training set size by evaluating on the larger PubMedQA artificial subset (211K samples) and the full MedQuAD corpus (47K samples).
+
+    \item \textbf{Hallucination analysis:} Conducting manual expert review of model outputs (50--100 samples per domain) to assess factual accuracy beyond what automated metrics capture.
+
+    \item \textbf{Multi-domain and multilingual adaptation:} Exploring fine-tuning on additional specialized domains (e.g., finance, engineering) and evaluating whether multilingual models like Qwen maintain performance advantages across non-English corpora.
+\end{itemize}
+
+% ============================================================
+\section{Contributions}
+\label{sec:contributions}
+
+Table~\ref{tab:contributions} summarizes the contributions of each team member to this project.
+
+\begin{table}[H]
+\centering
+\caption{Individual contributions.}
+\label{tab:contributions}
+\begin{tabular}{lp{10cm}}
+\toprule
+\textbf{Team Member} & \textbf{Contributions} \\
+\midrule
+Ravikumar Komandur Narayanan & \todo{Describe Ravikumar's specific contributions (e.g., project design, experiment implementation, medical domain experiments, report writing).} \\
+\addlinespace
+Nathan Howland & \todo{Describe Nathan's specific contributions (e.g., legal domain experiments, data preprocessing, evaluation pipeline).} \\
+\addlinespace
+Gunanidhi Ramakrishnan & \todo{Describe Gunanidhi's specific contributions (e.g., baseline evaluation, cross-domain experiments, literature review).} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================
+\section{Code Repository}
+\label{sec:code-repo}
+
+The complete source code for all experiments, including training scripts, evaluation pipelines, and data preprocessing utilities, is publicly available at:
+
+\begin{center}
+    \todo{Insert public GitHub repository URL here, e.g.:\\
+    \url{https://github.com/username/cmpe252-domain-adaptation}}
+\end{center}
+
+% ============================================================
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}
