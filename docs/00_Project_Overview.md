@@ -76,7 +76,7 @@ Fine-tune four open-source LLMs using LoRA (Low-Rank Adaptation) on legal and me
 ## Project Structure
 
 ```
-AI_MS_Project/
+CMPE252-Project/
 ├── 00_Project_Overview.md          ← This file
 ├── 01_Environment_Setup.md         ← Libraries, GPU, Hugging Face setup
 ├── 02_Libraries_Explained.md       ← What each library does and why
