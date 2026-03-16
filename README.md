@@ -125,5 +125,5 @@ This repository is intentionally not a direct copy of a teammate's project layou
 
 ## Author
 
-Ravikumar  
+Ravikumar Komandur Narayanan  
 MS AI / CMPE 252 Final Project
