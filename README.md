@@ -31,8 +31,25 @@ The central question is whether parameter-efficient fine-tuning methods such as 
 | `results/experiment_results.md` | Recorded experiment outcomes and observations |
 | `report/` | Final report source, bibliography, and writing material |
 | `figures/` | Charts generated from the current experiment results |
-| `00_Project_Overview.md` to `06_Experiment_Plan.md` | Planning, methodology, setup, and background notes |
+| `docs/` | Planning, methodology, setup, and background notes |
 | `CMPE-252_Ravikumar_FinalProjectProposal.pdf` | Original proposal submitted for the project |
+
+## Reproducibility
+
+The main Python dependencies used across the experiment scripts are listed in `requirements.txt`. The environment notes remain in `docs/01_Environment_Setup.md`, while the scripts in `notebooks/` capture the specific experiment flows.
+
+## Quick Start
+
+```bash
+pip install -r requirements.txt
+```
+
+Then review these entry points:
+
+- `notebooks/6.1_baseline_evaluation.py`
+- `notebooks/6.2_lora_medical_finetuning.py`
+- `results/experiment_results.md`
+- `report/main.tex`
 
 ## Current Completed Results
 
@@ -104,6 +121,7 @@ This repository is intentionally not a direct copy of a teammate's project layou
 - `notebooks/6.1_baseline_evaluation.py` for the baseline evaluation workflow
 - `notebooks/6.2_lora_medical_finetuning.py` for the LoRA medical experiment
 - `report/main.tex` for the report draft
+- `docs/06_Experiment_Plan.md` for the full experiment roadmap
 
 ## Author
 

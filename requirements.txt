@@ -1,0 +1,13 @@
+torch
+transformers
+datasets
+evaluate
+tqdm
+peft
+trl
+accelerate
+bitsandbytes
+sentencepiece
+protobuf
+rouge_score
+unsloth
