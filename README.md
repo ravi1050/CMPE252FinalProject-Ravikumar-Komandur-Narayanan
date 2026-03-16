@@ -91,6 +91,26 @@ The strongest completed comparison in this repository is the Phi-3 medical QA tr
 
 ![LoRA efficiency summary](figures/phi3_lora_efficiency_summary.png)
 
+## Shared Project Figures
+
+The repository also includes a selected set of figures generated from shared project experiments across additional models and PEFT methods. These are kept separate from the individually documented Phi-3 results above.
+
+### LLaMA LoRA on Legal QA
+
+![LLaMA LoRA legal comparison](figures/shared_results/llama_lora_legal_comparison.png)
+
+![LLaMA LoRA legal metrics](figures/shared_results/llama_lora_legal_metrics.png)
+
+### Phi LoRA and QLoRA on PubMedQA
+
+![Phi LoRA PubMed comparison](figures/shared_results/phi_lora_pubmed_comparison.png)
+
+![Phi QLoRA PubMed comparison](figures/shared_results/phi_qlora_pubmed_comparison.png)
+
+### Mistral QLoRA on MedQuAD
+
+![Mistral QLoRA MedQuAD comparison](figures/shared_results/mistral_qlora_medquad_comparison.png)
+
 ## Why This Repo Is Different
 
 This repository is intentionally not a direct copy of a teammate's project layout. It keeps the full development trail together:
@@ -100,6 +120,7 @@ This repository is intentionally not a direct copy of a teammate's project layou
 - recorded results and observations
 - report assets for final submission
 - generated visual summaries tied to the measured outputs already completed
+- selected shared-project figures across additional models and methods
 
 ## Experiment Coverage
 

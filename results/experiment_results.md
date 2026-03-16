@@ -129,3 +129,7 @@ The highest-value additions to this document are:
 3. AdaLoRA and IA3 comparison on the same model and dataset
 
 Once those runs are complete, this file can be expanded into a consolidated final comparison table across methods, domains, and models.
+
+## Shared Figure Appendix
+
+Selected shared-project visual outputs for additional model and method combinations are stored in `figures/shared_results/`. These figures are useful for presentation and qualitative comparison, but the detailed numeric summaries in this document remain limited to the completed, locally documented measurements currently recorded in this repository.
